@@ -1,0 +1,16 @@
+{
+  "name": "erc20_factory",
+  "scripts": {
+    "deploy": "hardhat run scripts/deploy.js"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.22.5"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^5.0.0",
+    "@openzeppelin/contracts-upgradeable": "^4.9.6",
+    "bignumber.js": "^9.1.2",
+    "dotenv": "^16.4.5"
+  }
+}
