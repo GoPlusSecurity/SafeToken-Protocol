@@ -13,7 +13,6 @@ interface IERC20Factory {
         address dest
     );
 
-    event FeeUpdated(uint256 fee, address feeReceiver);
     event TemplateUpdated(uint256 key, address template);
 
     // cumpute token address before create
@@ -27,5 +26,5 @@ interface IERC20Factory {
         uint256 totalSupply_,
         address owner_,
         address dest_
-    ) external payable returns (address token);
+    ) external returns (address token);
 }

@@ -13,17 +13,17 @@ describe("ERC20 Factory test", function () {
     const TokenTemplate = await ethers.getContractFactory("TokenTemplate");
     const template = await TokenTemplate.deploy();
     
-    const [signer, feeTo] = await ethers.getSigners();
+    const [signer] = await ethers.getSigners();
     
     const ERC20Factory = await ethers.getContractFactory("ERC20Factory");
-    const factory = await ERC20Factory.deploy(BigNumber(1e16).toFixed(0), feeTo.address);
-    return { signer, feeTo, template, factory };
+    const factory = await ERC20Factory.deploy();
+    return { signer, template, factory };
   }
 
   describe("test deploy", function () {
     it("test params", async function () {
 
-      const { signer, feeTo, template, factory } = await init();
+      const { signer, template, factory } = await init();
 
       // update template and check it
       await factory.updateTemplates(1, template.target);
@@ -38,7 +38,7 @@ describe("ERC20 Factory test", function () {
       let computeAddress = await factory.cumputeTokenAddress(1);
 
       let price = BigNumber(1e16).toFixed(0);
-      const tx = await factory.createToken(1, "Test", "Test Token", BigNumber(1e24).toFixed(0), signer.address, signer.address, { value: price });
+      const tx = await factory.createToken(1, "Test", "Test Token", BigNumber(1e24).toFixed(0), signer.address, signer.address);
       const receipt = await tx.wait();
       let logs = receipt.logs.find(event => event.fragment?.name == "TokenCreated");
       const [key, tokenAddress, symbol, name, totalsupply, owner, initReceiver] = logs.args;

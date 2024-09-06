@@ -12,13 +12,7 @@ contract ERC20Factory is IERC20Factory, Ownable {
     mapping(uint256 => address) public _templates;
     mapping(address => uint) _nonces;
 
-    uint256 public _fee;
-    address public _feeReceiver;
-
-    constructor(uint256 fee_, address feeReceiver_) Ownable(_msgSender()) {
-        _fee = fee_;
-        _feeReceiver = feeReceiver_;
-        emit FeeUpdated(fee_, feeReceiver_);
+    constructor() Ownable(_msgSender()) {
     }
 
     // 预先计算 token 地址
@@ -39,9 +33,8 @@ contract ERC20Factory is IERC20Factory, Ownable {
         uint256 totalSupply_,
         address owner_,
         address dest_
-    ) external payable override returns (address token) {
+    ) external override returns (address token) {
         require(_templates[tempKey_] != address(0), "Template not exists");
-        require(msg.value >= _fee, "Insufficient fee");
         // deploy token
         token = Clones.cloneDeterministic(
             _templates[tempKey_],
@@ -60,10 +53,6 @@ contract ERC20Factory is IERC20Factory, Ownable {
             owner_,
             dest_
         );
-        // tranfer fee
-        if (msg.value > 0) {
-            TransferHelper.safeTransferETH(_feeReceiver, msg.value);
-        }
     }
 
     function updateTemplates(
@@ -74,9 +63,4 @@ contract ERC20Factory is IERC20Factory, Ownable {
         emit TemplateUpdated(tempKey_, templete_);
     }
 
-    function updateFee(uint256 fee_, address feeReceiver_) external onlyOwner {
-        _fee = fee_;
-        _feeReceiver = feeReceiver_;
-        emit FeeUpdated(fee_, feeReceiver_);
-    }
 }
