@@ -35,9 +35,9 @@ interface ITokenLocker{
 
     struct FeeStruct {
         string name;
-        uint256 lpFee;
         uint256 lockFee;
         address lockFeeToken;
+        uint24 lpFee;
     }
 
     event OnLock(
@@ -80,8 +80,8 @@ interface ITokenLocker{
         address newOwner
     );
     event FeeReceiverUpdated(address feeReceiver);
-    event OnAddFee(bytes32 nameHash, string name, uint256 lpFee, uint256 lockFee, address lockFeeToken);
-    event OnEditFee(bytes32 nameHash, string name, uint256 lpFee, uint256 lockFee, address lockFeeToken);
+    event OnAddFee(bytes32 nameHash, string name, uint256 lockFee, address lockFeeToken, uint24 lpFee, bool isLp);
+    event OnEditFee(bytes32 nameHash, string name, uint256 lockFee, address lockFeeToken, uint24 lpFee, bool isLp);
 
     function lock(
         address token_,

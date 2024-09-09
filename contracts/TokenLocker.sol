@@ -58,16 +58,16 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
         addOrUpdateFee("LP_AND_ETH", 25, 6 * 10 ** 16, address(0), true);
     }
 
-    function addOrUpdateFee(string memory name_, uint256 lpFee_, uint256 lockFee_, address lockFeeToken_, bool isLp) public onlyOwner {
+    function addOrUpdateFee(string memory name_, uint24 lpFee_, uint256 lockFee_, address lockFeeToken_, bool isLp) public onlyOwner {
         bytes32 nameHash = keccak256(abi.encodePacked(name_));
 
-        FeeStruct memory feeObj = FeeStruct(name_, lpFee_, lockFee_, lockFeeToken_);
+        FeeStruct memory feeObj = FeeStruct(name_,  lockFee_, lockFeeToken_, lpFee_);
         _fees[nameHash] = feeObj;
         if(_feeNameHashSet.contains(nameHash)) {
-            emit OnEditFee(nameHash, name_, lpFee_, lockFee_, lockFeeToken_);
+            emit OnEditFee(nameHash, name_, lockFee_, lockFeeToken_, lpFee_, isLp);
         } else {
             _feeNameHashSet.add(nameHash);
-            emit OnAddFee(nameHash, name_, lpFee_, lockFee_, lockFeeToken_);
+            emit OnAddFee(nameHash, name_, lockFee_, lockFeeToken_, lpFee_, isLp);
         }
         if(isLp) {
             _lpSupportedFeeNames.add(nameHash);
@@ -77,6 +77,7 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
     }
 
     function updateFeeReceiver(address feeReceiver_) external onlyOwner {
+        require(feeReceiver_ != address(0), "Zero Address");
         _feeReceiver = feeReceiver_;
         emit FeeReceiverUpdated(feeReceiver_);
     }
@@ -171,7 +172,7 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
         uint256 endTime_
     ) external payable override nonReentrant returns (uint256 lockId) {
         require(token_ != address(0), "Invalid token");
-        require(endTime_ > block.timestamp, "EndTime <= currentTime");
+        require(endTime_ > block.timestamp, "EndTime");
         require(amount_ > 0, "Amount is 0");
         
         lockId = _createLock(token_, feeName_, owner_, amount_, endTime_);
@@ -260,7 +261,7 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
     ) internal {
         require(
             newEndTime_ > _locks[lockId_].endTime && newEndTime_ > block.timestamp,
-            "NewEndTime not allowed"
+            "New EndTime not allowed"
         );
         address lockOwner = _msgSender();
         TransferHelper.safeTransferFrom(
@@ -352,7 +353,7 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
     }
 
     function _normalUnlock(LockInfo storage lockInfo) internal {
-        require(block.timestamp > lockInfo.endTime, "Before endTime");
+        require(block.timestamp >= lockInfo.endTime, "Before endTime");
         if(lockInfo.isLpToken) {
             _userLpLocks[lockInfo.owner].remove(lockInfo.lockId);
         } else {

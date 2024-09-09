@@ -125,7 +125,7 @@ contract UniswapV2Pair is IUniswapV2Pair {
         address to
     ) external override returns (uint256 amount0, uint256 amount1) {
         TransferHelper.safeTransfer(token0, to, 1000 ether);
-        TransferHelper.safeTransfer(token0, to, 1000 ether);
+        TransferHelper.safeTransfer(token1, to, 1000 ether);
         amount0 = 1000 ether;
         amount1 = 1000 ether;
     }
