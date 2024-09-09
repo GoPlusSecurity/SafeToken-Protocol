@@ -10,14 +10,14 @@ const { default: BigNumber } = require("bignumber.js");
 describe("locker test", function () {
   async function init() {
     const [signer, feeTo, user1, user2, user3] = await ethers.getSigners();
-    
+
     const TokenTemplate = await ethers.getContractFactory("TokenTemplate");
     const tokenA = await TokenTemplate.deploy();
     await tokenA.initialize("TokenA", "Test TokenA", BigNumber(1e26).toFixed(0), signer.address, signer.address);
     const tokenB = await TokenTemplate.deploy();
     await tokenB.initialize("TokenB", "Test TokenB", BigNumber(1e26).toFixed(0), signer.address, signer.address);
 
-    
+
     const UniswapV2Factory = await ethers.getContractFactory("UniswapV2Factory");
     const factory = await UniswapV2Factory.deploy();
     const tx = await factory.createPair(tokenA.target, tokenB.target);
@@ -27,7 +27,7 @@ describe("locker test", function () {
 
     await tokenA.approve(pairAddr, ethers.MaxUint256);
     await tokenB.approve(pairAddr, ethers.MaxUint256);
-    
+
     const UniswapV2Pair = await ethers.getContractFactory("UniswapV2Pair");
     const pair = UniswapV2Pair.attach(pairAddr);
 
@@ -66,7 +66,7 @@ describe("locker test", function () {
         locker.lock(tokenA.target, "TOKEN", signer.address, BigNumber(1e20).toFixed(), endTime)
       ).to.be.revertedWith("Fee");
       let beforeBalance = await ethers.provider.getBalance(feeTo.address);
-      await locker.lock(tokenA.target, "TOKEN", signer.address, BigNumber(1e20).toFixed(), endTime, { value: BigNumber(12 * 10 ** 16).toFixed()});
+      await locker.lock(tokenA.target, "TOKEN", signer.address, BigNumber(1e20).toFixed(), endTime, { value: BigNumber(12 * 10 ** 16).toFixed() });
       let afterBalance = await ethers.provider.getBalance(feeTo.address);
       // check fee
       expect(BigNumber(afterBalance).minus(beforeBalance)).to.equal(BigNumber(12 * 10 ** 16));
@@ -91,14 +91,12 @@ describe("locker test", function () {
       expect(
         locker.updateLock(lockId, 0, ++endTime)
       ).to.be.revertedWith("MoreAmount is 0");
-      await locker.updateLock(lockId, BigNumber(1e20).toFixed(), ++endTime);
+      await locker.updateLock(lockId, BigNumber(1e20).toFixed(), ++endTime, { value: BigNumber(12 * 10 ** 16).toFixed() });
       // check set endTime
       expect(
-        locker.updateLock(lockId, 1, endTime-1)
+        locker.updateLock(lockId, 1, endTime - 1)
       ).to.be.revertedWith("New EndTime not allowed");
-      await locker.updateLock(lockId, 1, parseInt(++endTime));
-
-
+      await locker.updateLock(lockId, 1, parseInt(++endTime), { value: BigNumber(12 * 10 ** 16).toFixed() });
 
     }),
     it("test unlock token", async function () {
@@ -110,7 +108,7 @@ describe("locker test", function () {
       let currentBlock = await getCurrentBlock();
       let endTime = currentBlock.timestamp + 200;
       // lock and get lockId from event
-      let tx = await locker.lock(tokenA.target, "TOKEN", signer.address, lockAmount , endTime, 
+      let tx = await locker.lock(tokenA.target, "TOKEN", signer.address, lockAmount, endTime,
         { value: BigNumber(12 * 10 ** 16).toFixed() }
       );
       const receipt = await tx.wait();
@@ -120,7 +118,7 @@ describe("locker test", function () {
 
       // increase timestamp
       await ethers.provider.send("evm_increaseTime", [100]);
-      await ethers.provider.send("evm_mine", []); 
+      await ethers.provider.send("evm_mine", []);
       expect(
         locker.unlock(lockId)
       ).to.be.revertedWith('Before endTime');
@@ -130,7 +128,7 @@ describe("locker test", function () {
 
       // increase timestamp
       await ethers.provider.send("evm_increaseTime", [100]);
-      await ethers.provider.send("evm_mine", []); 
+      await ethers.provider.send("evm_mine", []);
       lockInfo = await locker._locks(lockId);
       // unlock
       let unlockTx = await locker.unlock(lockId);
@@ -190,7 +188,7 @@ describe("locker test", function () {
 
       // increase timestamp
       await ethers.provider.send("evm_increaseTime", [200]);
-      await ethers.provider.send("evm_mine", []); 
+      await ethers.provider.send("evm_mine", []);
 
       await locker.connect(user1).unlock(lockId);
       lockInfo = await locker._locks(lockId);
@@ -202,7 +200,7 @@ describe("locker test", function () {
 
       // increase 200 will unlock 2 cycle = 40 % 
       await ethers.provider.send("evm_increaseTime", [200]);
-      await ethers.provider.send("evm_mine", []); 
+      await ethers.provider.send("evm_mine", []);
 
       // unlock
       await locker.connect(user1).unlock(lockId);
@@ -223,7 +221,7 @@ describe("locker test", function () {
       await pair.approve(locker.target, ethers.MaxUint256);
       let lockAmount = BigNumber(1e21).toFixed(0);
       expect(
-        locker.lock(pair.target, "TOKEN", signer.address, lockAmount , endTime)
+        locker.lock(pair.target, "TOKEN", signer.address, lockAmount, endTime)
       ).to.be.revertedWith("Fee");
 
       let beforeFee = await tokenA.balanceOf(feeTo.address);
@@ -231,7 +229,120 @@ describe("locker test", function () {
       await locker.lock(pair.target, "LP_ONLY", user1.address, lockAmount, endTime);
       let afterFee = await tokenA.balanceOf(feeTo.address);
       expect(afterFee).to.greaterThan(0);
+    }),
+    it("test update lp", async function () {
+      const { factory, tokenA, tokenB, pair, locker, signer, feeTo, user1 } = await init();
+      let currentBlock = await getCurrentBlock();
+      let endTime = currentBlock.timestamp + 200;
+      await pair.approve(locker.target, ethers.MaxUint256);
+      let lockAmount = BigNumber(1e20).toFixed(0);
+      // lock and get lockId from event
+      let tx = await locker.lock(pair.target, "LP_ONLY", signer.address, lockAmount, endTime);
+      const receipt = await tx.wait();
+      let logs = receipt.logs.find(event => event.fragment?.name == "OnLock");
+      const [lockId] = logs.args;
+
+      // check lock more
+      await locker.updateLock(lockId, BigNumber(1e18).toFixed(), ++endTime);
+      // check set endTime
+      await locker.updateLock(lockId, BigNumber(1e18).toFixed(), parseInt(++endTime));
+    }),
+    it("test unlock lp", async function () {
+      const { factory, tokenA, tokenB, pair, locker, signer, feeTo, user1 } = await init();
+      let currentBlock = await getCurrentBlock();
+      let endTime = currentBlock.timestamp + 200;
+      await pair.approve(locker.target, ethers.MaxUint256);
+      let lockAmount = BigNumber(1e20).toFixed(0);
+      // lock and get lockId from event
+      let tx = await locker.lock(pair.target, "LP_ONLY", signer.address, lockAmount, endTime);
+      const receipt = await tx.wait();
+      let logs = receipt.logs.find(event => event.fragment?.name == "OnLock");
+      const [lockId] = logs.args;
+      let lockInfoBefore = await locker._locks(lockId);
+      // console.log(lockInfoBefore);
+      expect(lockInfoBefore.unlockedAmount).to.equal(0);
+
+      // increase timestamp
+      await ethers.provider.send("evm_increaseTime", [100]);
+      await ethers.provider.send("evm_mine", []);
+      expect(
+        locker.unlock(lockId)
+      ).to.be.revertedWith('Before endTime');
+
+      // increase timestamp
+      await ethers.provider.send("evm_increaseTime", [100]);
+      await ethers.provider.send("evm_mine", []);
+
+      let lockInfoAfter = await locker._locks(lockId);
+      // console.log(lockInfoAfter);
+      expect(lockInfoAfter.amount).to.equal(0);
+
+      // unlock
+      let unlockTx = await locker.unlock(lockId);
+      let unlockReceipt = await unlockTx.wait();
+      let OnUnlock = unlockReceipt.logs.find(event => event.fragment?.name == "OnUnlock");
+      const [, , owner, amount] = OnUnlock.args;
+      expect(owner).to.equal(signer.address);
+      expect(lockInfoBefore.amount).to.equal(lockInfoAfter.unlockedAmount);
+    }),
+      it("test vesting lp", async function () {
+      const { factory, tokenA, tokenB, pair, locker, signer, feeTo, user1 } = await init();
+      // set approval
+      await pair.approve(locker.target, ethers.MaxUint256);
+      // endTime(tgeTime)
+      let currentBlock = await getCurrentBlock();
+      let endTime = currentBlock.timestamp + 200;
+      let lockAmount = BigNumber(1e20).toFixed(0);
+      let params = {
+        token: pair.target,
+        tgeBps: 2000, // 20 %
+        cycleBps: 2000, // 20% per cycle
+        owner: user1.address,
+        amount: lockAmount,
+        tgeTime: endTime,
+        cycle: 100
+      }
+      // lock and get lockId from event
+      let tx = await locker.vestingLock(params, "LP_ONLY");
+      const receipt = await tx.wait();
+      let logs = receipt.logs.find(event => event.fragment?.name == "OnLock");
+      const [lockId] = logs.args;
+      let lockInfoBefore = await locker._locks(lockId);
+      // console.log(lockInfoBefore);
+      expect(lockInfoBefore.unlockedAmount).to.equal(0);
+
+      // increase timestamp
+      await ethers.provider.send("evm_increaseTime", [200]);
+      await ethers.provider.send("evm_mine", []);
+
+      await locker.connect(user1).unlock(lockId);
+      let lockInfo = await locker._locks(lockId);
+      expect(lockInfo.unlockedAmount).to.be.not.equal(0);
+      await expect(await pair.balanceOf(user1.address)).to.equal(lockInfo.unlockedAmount);
+
+      // increase 200 will unlock 2 cycle = 40 % 
+      await ethers.provider.send("evm_increaseTime", [200]);
+      await ethers.provider.send("evm_mine", []);
+
+      // unlock
+      await locker.connect(user1).unlock(lockId);
+      let lockInfoAfter = await locker._locks(lockId);
+      expect(lockInfoAfter.unlockedAmount).to.greaterThan(lockInfo.unlockedAmount);
+
+      // increase 200 will unlock 2 cycle = 40 % , unlock all
+      await ethers.provider.send("evm_increaseTime", [200]);
+      await ethers.provider.send("evm_mine", []);
+      // unlock
+      await locker.connect(user1).unlock(lockId);
+      lockInfoAfter = await locker._locks(lockId);
+      expect(lockInfoAfter.unlockedAmount).to.equal(lockInfoBefore.amount);
+      // Nothing to unlock
+      await ethers.provider.send("evm_increaseTime", [200]);
+      await ethers.provider.send("evm_mine", []);
+      // unlock
+      await  expect(
+          locker.connect(user1).unlock(lockId)
+      ).to.be.revertedWith("Nothing to unlock");
     })
-    
   })
 });

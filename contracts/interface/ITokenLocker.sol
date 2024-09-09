@@ -26,6 +26,7 @@ interface ITokenLocker{
         uint256 endTime; // unlock time for normal locks, and TGE time for vesting locks
         uint256 cycle; // 0: normal locks
         uint256 unlockedAmount;
+        bytes32 feeNameHash;
     }
 
     struct CumulativeLockInfo {
@@ -121,7 +122,7 @@ interface ITokenLocker{
         uint256 lockId_,
         uint256 moreAmount_,
         uint256 newEndTime_
-    ) external;
+    ) external payable;
 
     function updateLockWitPermit(
         uint256 lockId_,
@@ -131,7 +132,7 @@ interface ITokenLocker{
         uint8 v,
         bytes32 r,
         bytes32 s
-    ) external;
+    ) external payable;
 
     function transferLock(
         uint256 lockId_,

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.20;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "../interface/IUniswapV2Pair.sol";
 import "../libs/TransferHelper.sol";
 
@@ -33,7 +34,7 @@ contract UniswapV2Pair is IUniswapV2Pair {
 
     function balanceOf(
         address owner
-    ) external view override returns (uint256) {
+    ) public view override returns (uint256) {
         return _balances[owner];
     }
 
@@ -118,16 +119,22 @@ contract UniswapV2Pair is IUniswapV2Pair {
         TransferHelper.safeTransferFrom(token1, to, address(this), 1000 ether);
         liquidity = 1000 ether;
         _balances[to] += liquidity;
+        totalSupply += liquidity;
         emit Transfer(address(0), to, liquidity);
     }
 
     function burn(
         address to
     ) external override returns (uint256 amount0, uint256 amount1) {
-        TransferHelper.safeTransfer(token0, to, 1000 ether);
-        TransferHelper.safeTransfer(token1, to, 1000 ether);
-        amount0 = 1000 ether;
-        amount1 = 1000 ether;
+        uint256 liquidityToBurn = balanceOf(address(this));
+        uint256 balance0 = IERC20(token0).balanceOf(address(this));
+        uint256 balance1 = IERC20(token1).balanceOf(address(this));
+        amount0 = balance0 * liquidityToBurn / totalSupply;
+        amount1 = balance1 * liquidityToBurn / totalSupply;
+        TransferHelper.safeTransfer(token0, to, amount0);
+        TransferHelper.safeTransfer(token1, to, amount1);
+        totalSupply -= liquidityToBurn;
+        _balances[address(this)] = 0;
     }
 
     function swap(
