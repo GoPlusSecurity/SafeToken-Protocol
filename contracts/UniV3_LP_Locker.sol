@@ -32,6 +32,7 @@ contract UniV3_LP_Locker is IERC721Receiver, Ownable, ReentrancyGuard {
         address pendingOwner;
         address owner;
         address collector;
+        address collectAddress; // receive collections when not specified 
         address pool;
         uint256 collectFee;
         uint256 nftId;
@@ -184,6 +185,7 @@ contract UniV3_LP_Locker is IERC721Receiver, Ownable, ReentrancyGuard {
         uint256 nftId_,
         address owner_,
         address collector_,
+        address collectAddress_,
         uint256 endTime_,
         string memory  feeName_
     ) external payable returns (uint256 lockId) {
@@ -195,17 +197,18 @@ contract UniV3_LP_Locker is IERC721Receiver, Ownable, ReentrancyGuard {
             "nftPositionManager not supported"
         );
         FeeStruct memory feeObj = getFee(feeName_);
-        lockId = _lock(nftManager_, nftId_, owner_, collector_, endTime_, feeObj);
+        lockId = _lock(nftManager_, nftId_, owner_, collector_, collectAddress_, endTime_, feeObj);
     }
 
-    function lock(
+    function lockWithCustomFee(
         INonfungiblePositionManager nftManager_,
         uint256 nftId_,
         address owner_,
         address collector_,
+        address collectAddress_,
         uint256 endTime_,
-        FeeStruct memory feeObj_,
-        bytes memory signature_
+        bytes memory signature_,
+        FeeStruct memory feeObj_
     ) external payable returns (uint256 lockId) {
         require(collector_ != address(0), "CollectAddress invalid");
         require(endTime_ > block.timestamp, "EndTime <= currentTime");
@@ -214,14 +217,14 @@ contract UniV3_LP_Locker is IERC721Receiver, Ownable, ReentrancyGuard {
             "nftPositionManager not supported"
         );
         _verifySignature(feeObj_, signature_);
-        lockId = _lock(nftManager_, nftId_, owner_, collector_, endTime_, feeObj_);
+        lockId = _lock(nftManager_, nftId_, owner_, collector_, collectAddress_, endTime_, feeObj_);
     }
 
     function _verifySignature(
         FeeStruct memory fee,
         bytes memory signature
     ) internal view {
-        bytes32 messageHash = keccak256(abi.encodePacked(fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken));
+        bytes32 messageHash = keccak256(abi.encodePacked(fee.name, fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken));
         bytes32 prefixedHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
         address signer = ECDSA.recover(prefixedHash, signature);
         require(signer == _customFeeSigner, "FeeSigner not allowed");
@@ -232,6 +235,7 @@ contract UniV3_LP_Locker is IERC721Receiver, Ownable, ReentrancyGuard {
         uint256 nftId_,
         address owner_,
         address collector_,
+        address collectAddress_,
         uint256 endTime_,
         FeeStruct memory feeObj
     ) internal returns (uint256 lockId) {
@@ -260,6 +264,7 @@ contract UniV3_LP_Locker is IERC721Receiver, Ownable, ReentrancyGuard {
             pendingOwner: address(0),
             owner: owner_,
             collector: collector_,
+            collectAddress: collectAddress_,
             pool: pool,
             collectFee: feeObj.collectFee,
             nftId: nftId_,
