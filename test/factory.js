@@ -15,8 +15,8 @@ describe("ERC20 Factory test", function () {
     
     const [signer] = await ethers.getSigners();
     
-    const ERC20Factory = await ethers.getContractFactory("ERC20Factory");
-    const factory = await ERC20Factory.deploy();
+    const SafeTokenFactory = await ethers.getContractFactory("SafeTokenFactory");
+    const factory = await SafeTokenFactory.deploy();
     return { signer, template, factory };
   }
 
@@ -27,7 +27,7 @@ describe("ERC20 Factory test", function () {
 
       // update template and check it
       await factory.updateTemplates(1, template.target);
-      const temp = await factory._templates(1);
+      const temp = await factory.templates(1);
       expect(temp).to.equal(template.target);
 
       // let tempCode = await ethers.provider.getCode(template.target)；

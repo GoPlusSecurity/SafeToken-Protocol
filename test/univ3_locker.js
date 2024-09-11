@@ -46,8 +46,8 @@ describe("locker test", function () {
     let [, , nftId] = logs.args;
     nftId = parseInt(nftId);
 
-    const UniV3_LP_Locker = await ethers.getContractFactory("UniV3_LP_Locker");
-    const locker = await UniV3_LP_Locker.deploy(nftManager.target, feeTo.address, feeSigner.address);
+    const UniV3LPLocker = await ethers.getContractFactory("UniV3LPLocker");
+    const locker = await UniV3LPLocker.deploy(nftManager.target, feeTo.address, feeSigner.address);
     return { signer, feeTo, feeSigner, user1, user2, user3, tokenA, tokenB, nftManager, locker, factory, nftId };
   };
 

@@ -9,31 +9,22 @@ import "./interface/IToken.sol";
 
 contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, OwnableUpgradeable{
 
-    bool public _constraints = true;
-    address public _tokenHook;
-    
     // 黑名单
-    mapping (address => bool) _blacklist;
+    mapping (address => bool) blacklist;
 
     // 白名单 不扣税，不限制巨鲸，
-    mapping (address => bool) _whitelist;
+    mapping (address => bool) whitelist;
 
     // 池子只能设置一次，需要提前计算好
-    mapping (address => bool) _pool;
+    mapping (address => bool) pools;
 
 
     uint256 constant DENOMINATOR = 10000;
 
     // tax
-    uint256 public _buyTax;
-    uint256 public _sellTax;
-    address public _taxReceiver;
-
-    // 防巨鲸，地址最大持仓
-    uint256 public _maxWalletLimit;
-
-    // 防巨鲸，单比最大转账
-    uint256 public _maxTransferLimit;
+    uint256 public buyTax;
+    uint256 public sellTax;
+    address public taxReceiver;
 
     // 是否收费，初始为 true，只能改为 false
     bool public hasTax = true;
@@ -47,13 +38,13 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
     bool public hasDevInit = false;
 
 
-    function initialize(string memory _symbol, string memory _name, uint256 _totalSupply, address _owner, address _dest) 
+    function initialize(string memory symbol_, string memory name_, uint256 totalSupply_, address owner_, address dest_) 
         external 
         initializer
     {   
-        _transferOwnership(_owner);
-        __ERC20_init(_name, _symbol);
-        _mint(_dest, _totalSupply);
+        _transferOwnership(owner_);
+        __ERC20_init(name_, symbol_);
+        _mint(dest_, totalSupply_);
 
     }
 
@@ -75,7 +66,7 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
             unchecked {
                 i--;
             }
-            _blacklist[blacks_[i]] = true;
+            blacklist[blacks_[i]] = true;
         }
 
         // set whitelist
@@ -83,46 +74,46 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
             unchecked {
                 i--;
             }
-            _whitelist[whites_[i]] = true;
+            whitelist[whites_[i]] = true;
         }
 
         for(uint256 i= pool_.length; i > 0;) {
             unchecked {
                 i--;
             }
-            _pool[pool_[i]] = true;
+            pools[pool_[i]] = true;
         }
 
         // set tax
-        _buyTax = buyTax_;
-        _sellTax = sellTax_;
-        _taxReceiver = taxReceiver_;
+        buyTax = buyTax_;
+        sellTax = sellTax_;
+        taxReceiver = taxReceiver_;
 
         // set dev initialized
         hasDevInit = true;
     }
 
     function _transfer(address from, address to, uint256 amount) internal override {
-        if(_whitelist[from] || _whitelist[to]) {
+        if(whitelist[from] || whitelist[to]) {
             return super._transfer(from, to, amount);
         }
 
         if(hasBlacklist) {
-            require(!_blacklist[from] && !_blacklist[to], "Address is blocked");
+            require(!blacklist[from] && !blacklist[to], "Address is blocked");
         }
 
         if(hasTax) {
             uint256 taxAmount = 0;
             // buy
-            if(_pool[from]) { 
-                taxAmount = amount * _buyTax / DENOMINATOR;
+            if(pools[from]) { 
+                taxAmount = amount * buyTax / DENOMINATOR;
             } 
             // sell
-            else if(_pool[to]) {  
-                taxAmount = amount * _sellTax / DENOMINATOR;
+            else if(pools[to]) {  
+                taxAmount = amount * sellTax / DENOMINATOR;
             } 
             if(taxAmount > 0) {
-                super._transfer(from, _taxReceiver, taxAmount);
+                super._transfer(from, taxReceiver, taxAmount);
                 amount -= taxAmount;
             }
         }

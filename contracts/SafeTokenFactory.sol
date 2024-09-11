@@ -5,12 +5,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/proxy/Clones.sol";
 
 import "./interface/IToken.sol";
-import "./interface/IERC20Factory.sol";
+import "./interface/ISafeTokenFactory.sol";
 import "./libs/TransferHelper.sol";
 
-contract ERC20Factory is IERC20Factory, Ownable {
-    mapping(uint256 => address) public _templates;
-    mapping(address => uint) _nonces;
+contract SafeTokenFactory is ISafeTokenFactory, Ownable {
+    mapping(uint256 => address) public templates;
+    mapping(address => uint) public nonces;
 
     constructor() Ownable(_msgSender()) {
     }
@@ -20,8 +20,8 @@ contract ERC20Factory is IERC20Factory, Ownable {
         uint256 tempKey_
     ) external override view returns (address tokenAddress) {
         tokenAddress = Clones.predictDeterministicAddress(
-            _templates[tempKey_],
-            keccak256(abi.encode(_msgSender(), _nonces[_msgSender()]))
+            templates[tempKey_],
+            keccak256(abi.encode(_msgSender(), nonces[_msgSender()] + 1))
         );
     }
 
@@ -34,15 +34,15 @@ contract ERC20Factory is IERC20Factory, Ownable {
         address owner_,
         address dest_
     ) external override returns (address token) {
-        require(_templates[tempKey_] != address(0), "Template not exists");
+        require(templates[tempKey_] != address(0), "Template not exists");
+        nonces[_msgSender()]++;
         // deploy token
         token = Clones.cloneDeterministic(
-            _templates[tempKey_],
-            keccak256(abi.encode(_msgSender(), _nonces[_msgSender()]))
+            templates[tempKey_],
+            keccak256(abi.encode(_msgSender(), nonces[_msgSender()]))
         );
         // init token
         IToken(token).initialize(symbol_, name_, totalSupply_, owner_, dest_);
-        _nonces[_msgSender()]++;
         // emit event
         emit TokenCreated(
             tempKey_,
@@ -59,7 +59,7 @@ contract ERC20Factory is IERC20Factory, Ownable {
         uint256 tempKey_,
         address templete_
     ) external onlyOwner {
-        _templates[tempKey_] = templete_;
+        templates[tempKey_] = templete_;
         emit TemplateUpdated(tempKey_, templete_);
     }
 

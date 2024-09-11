@@ -9,18 +9,35 @@ const { ethers, network } = require("hardhat");
 const { default: BigNumber } = require("bignumber.js");
 
 async function main() {
+  const { chainId, feeTo, nftManager, customFeeSigner } = network.config;
+  console.log('chainId --> ', chainId);
+  console.log('nftManager --> ', nftManager);
+  console.log('feeTo --> ', feeTo);
+  console.log('customFeeSigner --> ', customFeeSigner);
 
   const TokenTemplate = await ethers.getContractFactory("TokenTemplate");
-  const template = await TokenTemplate.deploy(hook.target);
+  const template = await TokenTemplate.deploy();
   await template.waitForDeployment();
   console.log("template --> ", template.target);
 
-  const [signer, feeTo] = await ethers.getSigners();
+  const [signer] = await ethers.getSigners();
 
-  const ERC20Factory = await ethers.getContractFactory("ERC20Factory");
-  const factory = await ERC20Factory.deploy(BigNumber(1e16).toFixed(0), feeTo.address);
+  const SafeTokenFactory = await ethers.getContractFactory("SafeTokenFactory");
+  const factory = await SafeTokenFactory.deploy();
   await factory.waitForDeployment();
   console.log("factory --> ", factory.target);
+
+  let addTempTx = await factory.updateTemplates(1, template.target);
+  let addTempTxReceipt = await addTempTx.wait();
+
+  const TokenLocker = await ethers.getContractFactory("TokenLocker");
+  const locker = await TokenLocker.deploy(feeTo);
+  await locker.waitForDeployment();
+  console.log("locker --> ", locker.target);
+
+  const UniV3LPLocker = await ethers.getContractFactory("UniV3LPLocker");
+  const uniV3Locker = await UniV3LPLocker.deploy(nftManager, feeTo, customFeeSigner);
+  await uniV3Locker.waitForDeployment();
 }
 
 // We recommend this pattern to be able to use async/await everywhere

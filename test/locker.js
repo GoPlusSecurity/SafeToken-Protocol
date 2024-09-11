@@ -114,7 +114,7 @@ describe("locker test", function () {
       const receipt = await tx.wait();
       let OnLock = receipt.logs.find(event => event.fragment?.name == "OnLock");
       const [lockId] = OnLock.args;
-      let lockInfo = await locker._locks(lockId);
+      let lockInfo = await locker.locks(lockId);
 
       // increase timestamp
       await ethers.provider.send("evm_increaseTime", [100]);
@@ -124,12 +124,12 @@ describe("locker test", function () {
       ).to.be.revertedWith('Before endTime');
 
       // 有点奇怪，两次increaseTime 中间不查一下lockInfo，锁仓 amount 会变成 0
-      lockInfo = await locker._locks(lockId);
+      lockInfo = await locker.locks(lockId);
 
       // increase timestamp
       await ethers.provider.send("evm_increaseTime", [100]);
       await ethers.provider.send("evm_mine", []);
-      lockInfo = await locker._locks(lockId);
+      lockInfo = await locker.locks(lockId);
       // unlock
       let unlockTx = await locker.unlock(lockId);
       let unlockReceipt = await unlockTx.wait();
@@ -159,7 +159,7 @@ describe("locker test", function () {
       ).to.be.emit(locker, "OnLockPendingTransfer");
       // accept lock owner
       await locker.connect(user1).acceptLock(lockId);
-      let lockInfo = await locker._locks(lockId);
+      let lockInfo = await locker.locks(lockId);
       expect(lockInfo.owner).to.equal(user1.address);
     }),
     it("test vesting token", async function () {
@@ -184,14 +184,14 @@ describe("locker test", function () {
       let OnLock = receipt.logs.find(event => event.fragment?.name == "OnLock");
       const [lockId] = OnLock.args;
 
-      let lockInfo = await locker._locks(lockId);
+      let lockInfo = await locker.locks(lockId);
 
       // increase timestamp
       await ethers.provider.send("evm_increaseTime", [200]);
       await ethers.provider.send("evm_mine", []);
 
       await locker.connect(user1).unlock(lockId);
-      lockInfo = await locker._locks(lockId);
+      lockInfo = await locker.locks(lockId);
       let tgeAmount = BigNumber(lockAmount).multipliedBy(2000).dividedBy(10000).toFixed(0);
       // check unlocked amount
       expect(BigNumber(lockInfo.unlockedAmount)).to.equal(tgeAmount);
@@ -204,7 +204,7 @@ describe("locker test", function () {
 
       // unlock
       await locker.connect(user1).unlock(lockId);
-      lockInfo = await locker._locks(lockId);
+      lockInfo = await locker.locks(lockId);
       let unlockedAmount = BigNumber(lockAmount).multipliedBy(6000).dividedBy(10000).toFixed(0);
       // check unlocked amount
       expect(BigNumber(lockInfo.unlockedAmount)).to.equal(unlockedAmount);
@@ -258,7 +258,7 @@ describe("locker test", function () {
       const receipt = await tx.wait();
       let logs = receipt.logs.find(event => event.fragment?.name == "OnLock");
       const [lockId] = logs.args;
-      let lockInfoBefore = await locker._locks(lockId);
+      let lockInfoBefore = await locker.locks(lockId);
       // console.log(lockInfoBefore);
       expect(lockInfoBefore.unlockedAmount).to.equal(0);
 
@@ -273,7 +273,7 @@ describe("locker test", function () {
       await ethers.provider.send("evm_increaseTime", [100]);
       await ethers.provider.send("evm_mine", []);
 
-      let lockInfoAfter = await locker._locks(lockId);
+      let lockInfoAfter = await locker.locks(lockId);
       // console.log(lockInfoAfter);
       expect(lockInfoAfter.amount).to.equal(0);
 
@@ -307,7 +307,7 @@ describe("locker test", function () {
       const receipt = await tx.wait();
       let logs = receipt.logs.find(event => event.fragment?.name == "OnLock");
       const [lockId] = logs.args;
-      let lockInfoBefore = await locker._locks(lockId);
+      let lockInfoBefore = await locker.locks(lockId);
       // console.log(lockInfoBefore);
       expect(lockInfoBefore.unlockedAmount).to.equal(0);
 
@@ -316,7 +316,7 @@ describe("locker test", function () {
       await ethers.provider.send("evm_mine", []);
 
       await locker.connect(user1).unlock(lockId);
-      let lockInfo = await locker._locks(lockId);
+      let lockInfo = await locker.locks(lockId);
       expect(lockInfo.unlockedAmount).to.be.not.equal(0);
       await expect(await pair.balanceOf(user1.address)).to.equal(lockInfo.unlockedAmount);
 
@@ -326,7 +326,7 @@ describe("locker test", function () {
 
       // unlock
       await locker.connect(user1).unlock(lockId);
-      let lockInfoAfter = await locker._locks(lockId);
+      let lockInfoAfter = await locker.locks(lockId);
       expect(lockInfoAfter.unlockedAmount).to.greaterThan(lockInfo.unlockedAmount);
 
       // increase 200 will unlock 2 cycle = 40 % , unlock all
@@ -334,7 +334,7 @@ describe("locker test", function () {
       await ethers.provider.send("evm_mine", []);
       // unlock
       await locker.connect(user1).unlock(lockId);
-      lockInfoAfter = await locker._locks(lockId);
+      lockInfoAfter = await locker.locks(lockId);
       expect(lockInfoAfter.unlockedAmount).to.equal(lockInfoBefore.amount);
       // Nothing to unlock
       await ethers.provider.send("evm_increaseTime", [200]);

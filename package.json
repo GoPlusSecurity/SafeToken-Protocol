@@ -1,5 +1,5 @@
 {
-  "name": "erc20_factory",
+  "name": "SafeToken-Protocol",
   "scripts": {
     "deploy": "hardhat run scripts/deploy.js"
   },
