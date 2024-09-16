@@ -15,7 +15,7 @@ contract SafeTokenFactory is ISafeTokenFactory, Ownable {
     constructor() Ownable(_msgSender()) {
     }
 
-    // 预先计算 token 地址
+    // Calculate token address before actual deployment
     function cumputeTokenAddress(
         uint256 tempKey_
     ) external override view returns (address tokenAddress) {
@@ -25,7 +25,6 @@ contract SafeTokenFactory is ISafeTokenFactory, Ownable {
         );
     }
 
-    //
     function createToken(
         uint256 tempKey_,
         string memory symbol_,

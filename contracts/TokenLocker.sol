@@ -18,20 +18,21 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
     using EnumerableSet for EnumerableSet.UintSet;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
-    // 当前 lockId
+    // next lockId
     uint256 public nextLockId = 1;
 
-    // 锁仓详情
+    // lock detail
     mapping(uint256 lockId => LockInfo) public locks;
 
-    // 用户的锁仓
+    // List of normal token lock ids for users
     mapping(address => EnumerableSet.UintSet) private userNormalLocks;
+    // List of lp-token lock ids for users
     mapping(address => EnumerableSet.UintSet) private userLpLocks;
 
-    // token 对应的锁仓
+    // list of lock ids for token
     mapping(address => EnumerableSet.UintSet) private tokenLocks;
 
-    // token 锁仓统计数据
+    // Cumulative lock info for token
     mapping(address => CumulativeLockInfo) public cumulativeInfos;
 
     // 

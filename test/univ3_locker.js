@@ -102,8 +102,8 @@ describe("locker test", function () {
         lockFeeToken: ethers.ZeroAddress
       }
       const messageHash = ethers.solidityPackedKeccak256(
-        ["string", "uint256", "uint256", "uint256", "address"],
-        [fee.name, fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken]
+        ["address", "string", "uint256", "uint256", "uint256", "address"],
+        [signer.address, fee.name, fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken]
       );
       const signature = await feeSigner.signMessage(ethers.getBytes(messageHash));
       await locker.lockWithCustomFee(

@@ -9,15 +9,11 @@ import "./interface/IToken.sol";
 
 contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, OwnableUpgradeable{
 
-    // 黑名单
     mapping (address => bool) blacklist;
 
-    // 白名单 不扣税，不限制巨鲸，
     mapping (address => bool) whitelist;
 
-    // 池子只能设置一次，需要提前计算好
     mapping (address => bool) pools;
-
 
     uint256 constant DENOMINATOR = 10000;
 
@@ -26,15 +22,10 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
     uint256 public sellTax;
     address public taxReceiver;
 
-    // 是否收费，初始为 true，只能改为 false
     bool public hasTax = true;
 
-    // 是否有黑名单
     bool public hasBlacklist = true;
 
-    // 是否 anti-bot
-
-    // 代币发行方是否初始化过，默认false, 只能初始化一次
     bool public hasDevInit = false;
 
 

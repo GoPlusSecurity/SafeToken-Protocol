@@ -51,13 +51,13 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
 
     uint256 public nextLockId = 1;
 
-    // 支持的 nftPositionManger 列表
+    // supported nftPositionMangers
     EnumerableSet.AddressSet private nftManagers;
 
-    // 锁仓详情
+    // lock details
     mapping(uint256 lockId => LockInfo) public locks;
 
-    // 用户的锁仓
+    // List of lock ids for user
     mapping(address => EnumerableSet.UintSet) private userLocks;
 
     event OnLock(
@@ -224,7 +224,7 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
         FeeStruct memory fee,
         bytes memory signature
     ) internal view {
-        bytes32 messageHash = keccak256(abi.encodePacked(fee.name, fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken));
+        bytes32 messageHash = keccak256(abi.encodePacked(_msgSender(), fee.name, fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken));
         bytes32 prefixedHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
         address signer = ECDSA.recover(prefixedHash, signature);
         require(signer == customFeeSigner, "FeeSigner not allowed");
@@ -547,5 +547,11 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
         bytes calldata data
     ) external pure override returns (bytes4) {
         return IERC721Receiver.onERC721Received.selector;
+    }
+
+    function getUserLocks(
+        address user
+    ) external view returns(uint256[] memory lockIds) {
+        return userLocks[user].values();
     }
 }
