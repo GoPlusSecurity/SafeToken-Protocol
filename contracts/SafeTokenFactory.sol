@@ -34,6 +34,7 @@ contract SafeTokenFactory is ISafeTokenFactory, Ownable {
         address dest_
     ) external override returns (address token) {
         require(templates[tempKey_] != address(0), "Template not exists");
+        require(owner_ != address(0) && dest_ != address(0), "Zero Address");
         nonces[_msgSender()]++;
         // deploy token
         token = Clones.cloneDeterministic(

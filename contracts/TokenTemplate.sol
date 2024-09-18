@@ -17,6 +17,8 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
 
     uint256 constant DENOMINATOR = 10000;
 
+    address public initialRecipient;
+
     // tax
     uint256 public buyTax;
     uint256 public sellTax;
@@ -27,7 +29,9 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
     bool public hasBlacklist = true;
 
     bool public hasDevInit = false;
-
+    
+    event BlackListDisabled();
+    event TaxDisabled();
 
     function initialize(string memory symbol_, string memory name_, uint256 totalSupply_, address owner_, address dest_) 
         external 
@@ -36,7 +40,7 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
         _transferOwnership(owner_);
         __ERC20_init(name_, symbol_);
         _mint(dest_, totalSupply_);
-
+        initialRecipient = dest_;
     }
 
     function devInit(
@@ -45,7 +49,7 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
         address[] calldata pool_, 
         uint256 buyTax_, 
         uint256 sellTax_,
-        address taxReceiver_) external
+        address taxReceiver_) external onlyOwner
     {
         require(!hasDevInit, "Already Initialized");
         require(blacks_.length <= 10, "Too many black addresses");
@@ -57,6 +61,7 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
             unchecked {
                 i--;
             }
+            require(blacks_[i] != initialRecipient && blacks_[i] != taxReceiver_, "Can't be blocked");
             blacklist[blacks_[i]] = true;
         }
 
@@ -123,10 +128,12 @@ contract TokenTemplate is IToken, ERC20Upgradeable, ERC20PermitUpgradeable, Owna
 
     function removeBlacklist() external onlyOwner {
         hasBlacklist = false;
+        emit BlackListDisabled();
     }
 
     function removeTax() external onlyOwner {
         hasTax = false;
+        emit TaxDisabled();
     }
 
 }

@@ -82,7 +82,7 @@ describe("locker test", function () {
       // get current time
       let blockInfo = await getCurrentBlock();
       let endTime = blockInfo.timestamp + 200;
-      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, signer.address, endTime, "DEFAULT");
+      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, endTime, "DEFAULT");
       let receipt = await tx.wait();
       let log = receipt.logs.find(e => e.fragment?.name == 'OnLock');
       const [lockId] = log.args;
@@ -102,8 +102,8 @@ describe("locker test", function () {
         lockFeeToken: ethers.ZeroAddress
       }
       const messageHash = ethers.solidityPackedKeccak256(
-        ["address", "string", "uint256", "uint256", "uint256", "address"],
-        [signer.address, fee.name, fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken]
+        ["uint256", "address", "string", "uint256", "uint256", "uint256", "address"],
+        [network.config.chainId, signer.address, fee.name, fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken]
       );
       const signature = await feeSigner.signMessage(ethers.getBytes(messageHash));
       await locker.lockWithCustomFee(
@@ -111,7 +111,6 @@ describe("locker test", function () {
         nftId, 
         signer.address,
         user1.address, 
-        signer.address,
         endTime,
         signature,
         fee
@@ -124,7 +123,7 @@ describe("locker test", function () {
       // get current time
       let blockInfo = await getCurrentBlock();
       let endTime = parseInt(blockInfo.timestamp + 200);
-      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, signer.address, endTime, "DEFAULT");
+      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, endTime, "DEFAULT");
       let receipt = await tx.wait();
       let log = receipt.logs.find(e => e.fragment?.name =='OnLock');
       const [lockId] = log.args;
@@ -148,7 +147,7 @@ describe("locker test", function () {
       // get current time
       let blockInfo = await getCurrentBlock();
       let endTime = parseInt(blockInfo.timestamp + 200);
-      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, signer.address, endTime, "DEFAULT");
+      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, endTime, "DEFAULT");
       let receipt = await tx.wait();
       let log = receipt.logs.find(e => e.fragment?.name == 'OnLock');
       const [lockId] = log.args;
@@ -180,7 +179,7 @@ describe("locker test", function () {
       // get current time
       let blockInfo = await getCurrentBlock();
       let endTime = parseInt(blockInfo.timestamp + 200);
-      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, signer.address, endTime, "DEFAULT");
+      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, endTime, "DEFAULT");
       let receipt = await tx.wait();
       let log = receipt.logs.find(e => e.fragment?.name == 'OnLock');
       const [lockId] = log.args;
@@ -198,7 +197,7 @@ describe("locker test", function () {
       // get current time
       let blockInfo = await getCurrentBlock();
       let endTime = parseInt(blockInfo.timestamp + 200);
-      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, signer.address, endTime, "DEFAULT");
+      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, endTime, "DEFAULT");
       let receipt = await tx.wait();
       let log = receipt.logs.find(e => e.fragment?.name == 'OnLock');
       const [lockId] = log.args;
@@ -218,7 +217,7 @@ describe("locker test", function () {
       // get current time
       let blockInfo = await getCurrentBlock();
       let endTime = parseInt(blockInfo.timestamp + 200);
-      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, signer.address, endTime, "DEFAULT");
+      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, endTime, "DEFAULT");
       let receipt = await tx.wait();
       let log = receipt.logs.find(e => e.fragment?.name == 'OnLock');
       const [lockId] = log.args;
@@ -243,7 +242,7 @@ describe("locker test", function () {
       // get current time
       let blockInfo = await getCurrentBlock();
       let endTime = parseInt(blockInfo.timestamp + 200);
-      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, signer.address, endTime, "DEFAULT");
+      let tx = await locker.lock(nftManager.target, nftId, signer.address, user1.address, endTime, "DEFAULT");
       let receipt = await tx.wait();
       let log = receipt.logs.find(e => e.fragment?.name == 'OnLock');
       const [lockId] = log.args;

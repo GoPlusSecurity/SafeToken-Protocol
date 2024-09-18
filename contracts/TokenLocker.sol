@@ -61,6 +61,7 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
 
     function addOrUpdateFee(string memory name_, uint24 lpFee_, uint256 lockFee_, address lockFeeToken_, bool isLp) public onlyOwner {
         bytes32 nameHash = keccak256(abi.encodePacked(name_));
+        require(lpFee_ <= DENOMINATOR / 10, "lpFee");
 
         FeeStruct memory feeObj = FeeStruct(name_,  lockFee_, lockFeeToken_, lpFee_);
         fees[nameHash] = feeObj;
@@ -71,9 +72,11 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
             emit OnAddFee(nameHash, name_, lockFee_, lockFeeToken_, lpFee_, isLp);
         }
         if(isLp) {
-            lpSupportedFeeNames.add(nameHash);
+            if(!lpSupportedFeeNames.contains(nameHash))
+                lpSupportedFeeNames.add(nameHash);
         } else {
-            tokenSupportedFeeNames.add(nameHash);
+            if(!tokenSupportedFeeNames.contains(nameHash))
+                tokenSupportedFeeNames.add(nameHash);
         }
     }
 
@@ -106,6 +109,18 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
                 TransferHelper.safeTransferFrom(feeObj.lockFeeToken, _msgSender(), feeReceiver, feeObj.lockFee);
             }
         }
+    }
+
+    function _safeTransferFromEnsureAmount(
+        address token_,
+        address from_,
+        uint256 amount_
+    ) internal {
+        uint256 balanceBefore = IERC20(token_).balanceOf(address(this));
+        TransferHelper.safeTransferFrom(token_, from_, address(this), amount_);
+        uint256 balanceAfter = IERC20(token_).balanceOf(address(this));
+        require(balanceAfter - balanceBefore == amount_, "Received amount not enough");
+        
     }
 
     function _addLock(
@@ -148,12 +163,7 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
         uint256 amount_,
         uint256 endTime_
     ) internal returns (uint256 lockId) {
-        TransferHelper.safeTransferFrom(
-            token_,
-            _msgSender(),
-            address(this),
-            amount_
-        );
+        _safeTransferFromEnsureAmount(token_, _msgSender(), amount_);
         bytes32 nameHash = keccak256(abi.encodePacked(feeName_));
         (bool isLpToken_, uint256 newAmount) = _takeFee(token_, amount_, nameHash);
         lockId = _addLock(token_, isLpToken_, owner_, newAmount, endTime_, 0, 0, 0, nameHash);
@@ -201,18 +211,12 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
 
     function _vestingLock(VestingLockParams memory params, string memory feeName_) internal returns (uint256 lockId) {
         require(params.tgeTime > block.timestamp, "tgeTime <= currentTime");
-        require(params.cycle > 0, "Invalid cycle");
         require(
             params.tgeBps > 0 && params.cycleBps > 0 
                 && params.tgeBps + params.cycleBps <= DENOMINATOR, 
             "Invalid bips"
         );
-        TransferHelper.safeTransferFrom(
-            params.token,
-            _msgSender(),
-            address(this),
-            params.amount
-        );
+        _safeTransferFromEnsureAmount(params.token, _msgSender(), params.amount);
         bytes32 nameHash = keccak256(abi.encodePacked(feeName_));
         (bool isLpToken, uint256 newAmount) = _takeFee(params.token, params.amount, nameHash);
         lockId = _addLock(
@@ -271,12 +275,7 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
             "New EndTime not allowed"
         );
         address lockOwner = _msgSender();
-        TransferHelper.safeTransferFrom(
-            userLock.token,
-            lockOwner,
-            address(this),
-            moreAmount_
-        );
+        _safeTransferFromEnsureAmount(userLock.token, lockOwner, moreAmount_);
         (, uint256 newAmount) = _takeFee(userLock.token, moreAmount_, userLock.feeNameHash);
 
         userLock.amount += newAmount;
@@ -353,7 +352,6 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
         uint256 lockId_
     ) external override validLockOwner(lockId_) nonReentrant {
         LockInfo storage lockInfo = locks[lockId_];
-        require(lockInfo.owner == _msgSender(), "Not owner");
         if (lockInfo.tgeBps > 0) {
             _vestingUnlock(lockInfo);
         } else {
@@ -393,7 +391,9 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
             withdrawable > 0 && newTotalUnlockAmount <= lockInfo.amount,
             "Nothing to unlock"
         );
-        if (newTotalUnlockAmount == lockInfo.amount) {
+        uint256 left = lockInfo.amount - newTotalUnlockAmount;
+        if (left == 0) {
+            lockInfo.amount = 0;
             tokenLocks[lockInfo.token].remove(lockInfo.lockId);
             if(lockInfo.isLpToken) {
                 userLpLocks[lockInfo.owner].remove(lockInfo.lockId);
@@ -421,7 +421,7 @@ contract TokenLocker is ITokenLocker, SafeUniswapCall, Ownable, ReentrancyGuard 
             lockInfo.token,
             _msgSender(),
             withdrawable,
-            lockInfo.amount - lockInfo.unlockedAmount,
+            left,
             block.timestamp
         );
     }

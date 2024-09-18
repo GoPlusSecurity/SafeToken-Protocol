@@ -32,7 +32,6 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
         address pendingOwner;
         address owner;
         address collector;
-        address collectAddress; // receive collections when not specified 
         address pool;
         uint256 collectFee;
         uint256 nftId;
@@ -59,6 +58,8 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
 
     // List of lock ids for user
     mapping(address => EnumerableSet.UintSet) private userLocks;
+
+    mapping(bytes => bool) public disabledSigs;
 
     event OnLock(
         uint256 indexed lockId,
@@ -90,7 +91,10 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
     event OnAddFee(bytes32 nameHash, string name, uint256 lpFee, uint256 collectFee, uint256 lockFee, address lockFeeToken);
     event OnEditFee(bytes32 nameHash, string name, uint256 lpFee, uint256 collectFee, uint256 lockFee, address lockFeeToken);
     event OnRemoveFee(bytes32 nameHash);
-
+    event OnFeeReceiverUpdated(address oldReceiver, address newReceiver);
+    event OnFeeSignerUpdated(address oldSigner, address newSigner);
+    event OnAddNftManger(address nftManger);
+    event OnSignatureDisabled(bytes sig);
 
     modifier validLockOwner(uint256 lockId) {
         require(lockId < nextLockId, "Invalid lockId");
@@ -134,15 +138,23 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
     }
 
     function updateFeeReceiver(address feeReceiver_) external onlyOwner {
+        emit OnFeeReceiverUpdated(feeReceiver, feeReceiver_);
         feeReceiver = feeReceiver_;
     }
 
     function updateFeeSigner(address feeSigner_) external onlyOwner {
+        emit OnFeeSignerUpdated(customFeeSigner, feeSigner_);
         customFeeSigner = feeSigner_;
     }
 
     function addSupportedNftManager(address nftManager_) external onlyOwner {
         nftManagers.add(nftManager_);
+        emit OnAddNftManger(nftManager_);
+    }
+
+    function disableSig(bytes memory sig) external onlyOwner {
+        disabledSigs[sig] = true;
+        emit OnSignatureDisabled(sig);
     }
 
     function supportedNftManager(
@@ -185,7 +197,6 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
         uint256 nftId_,
         address owner_,
         address collector_,
-        address collectAddress_,
         uint256 endTime_,
         string memory  feeName_
     ) external payable returns (uint256 lockId) {
@@ -197,7 +208,7 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
             "nftPositionManager not supported"
         );
         FeeStruct memory feeObj = getFee(feeName_);
-        lockId = _lock(nftManager_, nftId_, owner_, collector_, collectAddress_, endTime_, feeObj);
+        lockId = _lock(nftManager_, nftId_, owner_, collector_, endTime_, feeObj);
     }
 
     function lockWithCustomFee(
@@ -205,7 +216,6 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
         uint256 nftId_,
         address owner_,
         address collector_,
-        address collectAddress_,
         uint256 endTime_,
         bytes memory signature_,
         FeeStruct memory feeObj_
@@ -217,14 +227,17 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
             "nftPositionManager not supported"
         );
         _verifySignature(feeObj_, signature_);
-        lockId = _lock(nftManager_, nftId_, owner_, collector_, collectAddress_, endTime_, feeObj_);
+        lockId = _lock(nftManager_, nftId_, owner_, collector_, endTime_, feeObj_);
     }
 
     function _verifySignature(
         FeeStruct memory fee,
         bytes memory signature
     ) internal view {
-        bytes32 messageHash = keccak256(abi.encodePacked(_msgSender(), fee.name, fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken));
+        require(!disabledSigs[signature], "Signature disabled");
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(block.chainid, _msgSender(), fee.name, fee.lpFee, fee.collectFee, fee.lockFee, fee.lockFeeToken)
+        );
         bytes32 prefixedHash = MessageHashUtils.toEthSignedMessageHash(messageHash);
         address signer = ECDSA.recover(prefixedHash, signature);
         require(signer == customFeeSigner, "FeeSigner not allowed");
@@ -235,7 +248,6 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
         uint256 nftId_,
         address owner_,
         address collector_,
-        address collectAddress_,
         uint256 endTime_,
         FeeStruct memory feeObj
     ) internal returns (uint256 lockId) {
@@ -264,7 +276,6 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
             pendingOwner: address(0),
             owner: owner_,
             collector: collector_,
-            collectAddress: collectAddress_,
             pool: pool,
             collectFee: feeObj.collectFee,
             nftId: nftId_,
@@ -391,7 +402,7 @@ contract UniV3LPLocker is IERC721Receiver, Ownable, ReentrancyGuard {
         userLock.nftPositionManager.collect(
             INonfungiblePositionManager.CollectParams(
                 userLock.nftId,
-                _msgSender(),
+                userLock.owner,
                 type(uint128).max,
                 type(uint128).max
             )
